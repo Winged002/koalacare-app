@@ -580,16 +580,20 @@ class ChangeAndSearchTests(BaseCase):
         care.set_task_status(self.db, circle, owner, task["_id"], "done")
 
         body = client.get("/changes").get_data(as_text=True)
-        self.assertIn(
-            '<span class="stat__value">1</span><span class="stat__label">Tasks completed</span>',
+        # The stat markup is multi-line, so allow whitespace between the value
+        # and its label instead of pinning the template's formatting.
+        self.assertRegex(
             body,
+            r'<span class="stat__value">1</span>\s*'
+            r'<span class="stat__label">Tasks completed</span>',
         )
 
         # After reading, the marker moves forward and the counts fall back to zero.
         again = client.get("/changes").get_data(as_text=True)
-        self.assertIn(
-            '<span class="stat__value">0</span><span class="stat__label">Tasks completed</span>',
+        self.assertRegex(
             again,
+            r'<span class="stat__value">0</span>\s*'
+            r'<span class="stat__label">Tasks completed</span>',
         )
 
     def test_search_finds_a_medication_and_reports_no_results_clearly(self):
