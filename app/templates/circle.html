@@ -1,0 +1,164 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Circle | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <p class="eyebrow">The circle</p>
+  <h1>{{ circle.name }}</h1>
+  <p class="page-head__lead">
+    {% if circle.subject_name %}Care circle for {{ circle.subject_name }} · {% endif %}
+    {{ member_count }} member{{ '' if member_count == 1 else 's' }} · times shown in {{ circle.timezone }}
+  </p>
+</header>
+
+{% if reveal %}
+<section class="card">
+  <h2 class="card__title">Invitation for {{ reveal.email }}</h2>
+  <p class="card__hint">Copy this and send it on. It is shown once and cannot be retrieved afterwards.</p>
+  <p class="reveal"><code>{{ site_url }}{{ reveal.path }}</code></p>
+</section>
+{% endif %}
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Who has access</h2>
+    <span class="section__hint">{{ member_count }} {{ 'person' if member_count == 1 else 'people' }}</span>
+  </div>
+  <div class="card card--flush">
+    <div class="care-ring" aria-hidden="true">
+      <span class="care-ring__centre">{{ (circle.subject_name or circle.name)[:1] | upper }}</span>
+      {% for member in members[:7] %}
+      <span class="avatar avatar--{{ ['a', 'b', 'c', 'd'][loop.index0 % 4] }} care-ring__item">{{ (member.label or '?')[:2] | upper }}</span>
+      {% endfor %}
+      {% if members|length > 7 %}<span class="care-ring__count">+{{ members|length - 7 }} more</span>{% endif %}
+    </div>
+
+    <div class="rows">
+      {% for member in members %}
+      <div class="person">
+        <span class="avatar avatar--{{ ['a', 'b', 'c', 'd'][loop.index0 % 4] }}" aria-hidden="true">{{ (member.label or '?')[:2] | upper }}</span>
+        <span class="row__body">
+          <span class="row__title">{{ member.label }}</span>
+          <span class="row__sub">{{ role_labels.get(member.role, member.role) }} — {{ role_blurb.get(member.role, '') }}</span>
+        </span>
+        {% if 'manage_members' in caps and member.role != 'owner' %}
+        <span class="row__action">
+          <form method="post" action="{{ url_for('care.circle_member_role', member_id=member._id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="sr-only" for="role-{{ member._id }}">Role for {{ member.label }}</label>
+            <select class="field__control" id="role-{{ member._id }}" name="role" data-autosubmit>
+              {% for value in ['family', 'carer', 'clinician', 'neighbour'] %}
+              <option value="{{ value }}"{% if member.role == value %} selected{% endif %}>{{ role_labels[value] }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn--quiet btn--sm" type="submit" data-autosubmit-fallback>Save</button>
+          </form>
+          <form method="post" action="{{ url_for('care.circle_member_remove', member_id=member._id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn--quiet btn--sm" type="submit">Remove</button>
+          </form>
+        </span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if can_invite %}
+<section class="card">
+  <details class="disclosure">
+    <summary>{{ icon("plus", 18) }} Invite someone</summary>
+    <form class="form-grid disclosure__body" method="post" action="{{ url_for('care.circle_invite') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label class="field__label" for="i-email">Email</label>
+        <input class="field__control" id="i-email" name="email" type="email" required>
+      </div>
+      <div class="field">
+        <label class="field__label" for="i-role">What they will see</label>
+        <select class="field__control" id="i-role" name="role">
+          {% for value in ['family', 'carer', 'clinician', 'neighbour'] %}
+          <option value="{{ value }}">{{ role_labels[value] }} — {{ role_blurb[value] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><button class="btn" type="submit">Create invite link</button></div>
+    </form>
+    {% if pending %}
+    <p class="card__hint">Waiting on: {% for invite in pending %}{{ invite.email }} ({{ role_labels.get(invite.role, invite.role) }}){{ ', ' if not loop.last }}{% endfor %}</p>
+    {% endif %}
+  </details>
+</section>
+{% endif %}
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">What each role can open</h2>
+    <span class="section__hint">Access is meant to be obvious, not a permissions puzzle</span>
+  </div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for area, roles_allowed in access_table %}
+      <div class="row">
+        <span class="row__body"><span class="row__title">{{ area }}</span></span>
+        <span class="row__action times">
+          {% if role in roles_allowed %}<span class="pill pill--good">You</span>{% endif %}
+          {% for value, label in role_labels.items() %}
+            {% if value in roles_allowed %}<span class="pill pill--quiet">{{ label }}</span>{% endif %}
+          {% endfor %}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Care load</h2>
+    <span class="section__hint">Last 30 days across this circle</span>
+  </div>
+  <div class="stats">
+    {% for row in load %}
+    <div class="stat">
+      <span class="stat__ico" aria-hidden="true">{{ icon("people", 18) }}</span>
+      <span class="stat__value">{{ row.total }}</span>
+      <span class="stat__label">{{ row.label }}</span>
+    </div>
+    {% endfor %}
+    <div class="stat{% if unassigned %} stat--warn{% endif %}">
+      <span class="stat__ico" aria-hidden="true">{{ icon("alert", 18) }}</span>
+      <span class="stat__value">{{ unassigned }}</span>
+      <span class="stat__label">Unassigned</span>
+    </div>
+  </div>
+</section>
+
+{% if 'manage_circle' in caps %}
+<section class="card">
+  <details class="disclosure">
+    <summary>{{ icon("settings", 18) }} Circle settings</summary>
+    <form class="form-grid disclosure__body" method="post" action="{{ url_for('care.circle_rename') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label class="field__label" for="c-name">Name</label>
+        <input class="field__control" id="c-name" name="name" value="{{ circle.name }}" required>
+      </div>
+      <div class="field">
+        <label class="field__label" for="c-subject">Who it is for</label>
+        <input class="field__control" id="c-subject" name="subject_name" value="{{ circle.subject_name or '' }}">
+      </div>
+      <div class="field">
+        <label class="field__label" for="c-tz">Timezone</label>
+        <select class="field__control" id="c-tz" name="timezone">
+          {% for zone in timezones %}<option value="{{ zone }}"{% if zone == circle.timezone %} selected{% endif %}>{{ zone }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><button class="btn" type="submit">Save</button></div>
+    </form>
+  </details>
+</section>
+{% endif %}
+{% endblock %}

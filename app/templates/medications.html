@@ -1,0 +1,133 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Medications | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__title"><h1>Medications</h1><span class="pill pill--quiet">{{ active|length }} current</span></div>
+  <p class="page-head__lead">Dose, times and supply, with a change history you can point a doctor at.</p>
+</header>
+
+{% if 'manage_medications' in caps %}
+<section class="card">
+  <details class="disclosure">
+  <summary>{{ icon("plus", 18) }} Add a medication</summary>
+  <form class="form-grid disclosure__body" method="post" action="{{ url_for('care.medication_add') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label class="field__label" for="m-name">Name</label>
+      <input class="field__control" id="m-name" name="name" placeholder="Ramipril" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="m-strength">Strength</label>
+      <input class="field__control" id="m-strength" name="strength" placeholder="5 mg">
+    </div>
+    <div class="field">
+      <label class="field__label" for="m-dose">Dose</label>
+      <input class="field__control" id="m-dose" name="dose" placeholder="1 tablet with breakfast">
+    </div>
+    <div class="field">
+      <label class="field__label" for="m-form">Form</label>
+      <input class="field__control" id="m-form" name="form" placeholder="tablet">
+    </div>
+    <div class="field">
+      <label class="field__label" for="m-times">Times</label>
+      <input class="field__control" id="m-times" name="times" placeholder="08:00" multiple>
+      <p class="field__hint">Add more than one by separating with a comma.</p>
+    </div>
+    <div class="field">
+      <label class="field__label" for="m-purpose">What it is for</label>
+      <input class="field__control" id="m-purpose" name="purpose" placeholder="Blood pressure">
+    </div>
+    <div class="field">
+      <label class="field__label" for="m-supply">Supply left</label>
+      <input class="field__control" id="m-supply" name="supply_left" placeholder="14 days">
+    </div>
+    <div class="field">
+      <label class="field__label" for="m-repeat">Repeat due</label>
+      <input class="field__control" id="m-repeat" name="repeat_due" type="date">
+    </div>
+    <div class="field">
+      <button class="btn" type="submit">Add medication</button>
+    </div>
+  </form>
+  </details>
+</section>
+{% endif %}
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Current</h2>
+    <span class="section__hint">{{ active|length }} active</span>
+  </div>
+  <div class="card card--flush">
+    {% if active %}
+    <div class="rows">
+      {% for med in active %}
+      <div class="row">
+        <span class="row__lead" aria-hidden="true">{{ icon("medication", 18) }}</span>
+        <span class="row__body">
+          <span class="row__title">{{ med.name }} {{ med.strength }}</span>
+          <span class="row__sub">{{ med.dose }}{% if med.purpose %} · {{ med.purpose }}{% endif %}</span>
+          {% if med.times %}<span class="times">{% for t in med.times %}<span class="pill">{{ t }}</span>{% endfor %}</span>{% endif %}
+          {% if med.supply_left %}<span class="row__sub">Supply: {{ med.supply_left }}</span>{% endif %}
+        </span>
+        {% if 'manage_medications' in caps %}
+        <form class="row__action" method="post" action="{{ url_for('care.medication_stop', medication_id=med._id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn--quiet btn--sm" type="submit">Stop</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <p class="empty__title">No medications yet</p>
+      <p>Start with the repeat prescription — it is the list that hurts when it is out of date.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Change history</h2>
+    <span class="section__hint">Nothing here is ever edited — a change is added, never overwritten</span>
+  </div>
+  <div class="card card--flush">
+    {% if history %}
+    <div class="rows">
+      {% for change in history %}
+      <div class="row">
+        <span class="row__time">{{ change.changed_at | dt('%d %b') }}</span>
+        <span class="row__body">
+          <span class="row__title">{{ change.medication_name }} · {{ field_labels.get(change.field, change.field) }}</span>
+          <span class="row__sub">
+            {% if change.from_value %}{{ change.from_value }} → {% endif %}{{ change.to_value }}
+            {% if change.note %} · {{ change.note }}{% endif %}
+          </span>
+          <span class="row__sub">by {{ change.changed_by_name }}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty"><p class="empty__title">No changes recorded</p><p>Changes appear here as soon as a dose is edited or stopped.</p></div>
+    {% endif %}
+  </div>
+</section>
+
+{% if stopped %}
+<section class="section">
+  <div class="section__head"><h2 class="section__title">Stopped</h2></div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for med in stopped %}
+      <div class="row row--done"><span class="row__body"><span class="row__title">{{ med.name }} {{ med.strength }}</span></span></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

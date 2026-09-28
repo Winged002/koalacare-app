@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import brand, icon %}
+{% block body_class %}auth{% endblock %}
+{% block title %}Sign in | KoalaCare{% endblock %}
+
+{% block body %}
+<section class="auth__card">
+  <a class="auth__brand" href="/">
+    <span class="appbar__mark" aria-hidden="true">
+      {{ brand(22) }}
+    </span>
+    <span>KoalaCare</span>
+  </a>
+
+  <div class="auth__art" aria-hidden="true"></div>
+
+  <h1>Good to see you</h1>
+  <p class="page-head__lead">Everything about the care you share, in one place.</p>
+
+  {% if error %}
+  <p class="alert alert--error" role="alert"><span aria-hidden="true">{{ icon("alert", 18) }}</span><span>{{ error }}</span></p>
+  {% endif %}
+
+  <form class="form-stack" method="post" action="{{ url_for('auth.login') }}">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <div class="field">
+      <label class="field__label" for="username">Username</label>
+      <input class="field__control" id="username" name="username" value="{{ username }}" autocomplete="username" required autofocus>
+    </div>
+    <div class="field">
+      <label class="field__label" for="password">Password</label>
+      <input class="field__control" id="password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+    <button class="btn btn--block" type="submit">Sign in</button>
+  </form>
+
+  <p class="auth__foot">
+    New here? <a href="{{ url_for('auth.register') }}">Create an account</a> —
+    you can start your own circle or join one you were invited to.
+  </p>
+</section>
+{% endblock %}

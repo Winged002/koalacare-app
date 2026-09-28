@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import brand, icon %}
+{% block body_class %}auth{% endblock %}
+{% block title %}Invitation | KoalaCare{% endblock %}
+
+{% block body %}
+<section class="auth__card">
+  <a class="auth__brand" href="/">
+    <span class="appbar__mark" aria-hidden="true">
+      {{ brand(22) }}
+    </span>
+    <span>KoalaCare</span>
+  </a>
+
+  {% if state == 'register' %}
+  <h1>Join {{ circle.name }}</h1>
+  <p class="page-head__lead">
+    You have been invited to the care circle for
+    {{ circle.subject_name or circle.name }}. Create your account and you will
+    go straight in.
+  </p>
+  {% if error %}
+  <p class="alert alert--error" role="alert"><span aria-hidden="true">{{ icon("alert", 18) }}</span><span>{{ error }}</span></p>
+  {% endif %}
+  <form class="form-stack" method="post" action="{{ url_for('auth.invite', token=request.view_args.token) }}">
+    <div class="field">
+      <label class="field__label" for="email">Email</label>
+      <input class="field__control" id="email" value="{{ invite.email }}" disabled>
+    </div>
+    <div class="field">
+      <label class="field__label" for="name">Your name</label>
+      <input class="field__control" id="name" name="name" value="{{ values.name }}" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="username">Choose a username</label>
+      <input class="field__control" id="username" name="username" value="{{ values.username }}" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="password">Choose a password</label>
+      <input class="field__control" id="password" name="password" type="password" autocomplete="new-password" required>
+      <p class="field__hint">At least 10 characters.</p>
+    </div>
+    <button class="btn btn--block" type="submit">Create account and join</button>
+  </form>
+  <p class="auth__foot">Already have an account? Sign in first, then open this link again.</p>
+
+  {% elif state == 'used' %}
+  <h1>That invitation has been used</h1>
+  <p class="page-head__lead">Sign in and the circle will be waiting for you.</p>
+  <a class="btn" href="{{ url_for('auth.login') }}">Sign in</a>
+
+  {% elif state == 'expired' %}
+  <h1>That invitation has expired</h1>
+  <p class="page-head__lead">Invitations last 14 days. Ask whoever invited you to send a fresh one.</p>
+  <a class="btn" href="{{ url_for('auth.login') }}">Sign in</a>
+
+  {% else %}
+  <h1>That invitation is not valid</h1>
+  <p class="page-head__lead">The link may have been cut in half by your email app, or the invitation was withdrawn.</p>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('auth.login') }}">Sign in</a>
+    <a class="btn btn--ghost" href="{{ url_for('auth.register') }}">Create an account</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

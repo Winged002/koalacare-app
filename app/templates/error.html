@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import brand %}
+{% block body_class %}auth{% endblock %}
+{% block title %}{{ title }} | KoalaCare{% endblock %}
+
+{% block body %}
+<section class="auth__card">
+  <a class="auth__brand" href="{{ url_for('care.today') }}">
+    <span class="appbar__mark" aria-hidden="true">
+      {{ brand(22) }}
+    </span>
+    <span>KoalaCare</span>
+  </a>
+  <h1>{{ title }}</h1>
+  <p class="page-head__lead">{{ message }}</p>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('care.today') }}">Back to Today</a>
+  </div>
+  <p class="auth__foot">Reference {{ code }}.</p>
+</section>
+{% endblock %}

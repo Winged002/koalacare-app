@@ -1,0 +1,38 @@
+{% extends "shell.html" %}
+{% block title %}Notifications | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__title"><h1>Notifications</h1>{% if unread %}<span class="pill">{{ unread }} unread</span>{% endif %}</div>
+  <p class="page-head__lead">Things other people in your circles did. Your own actions never appear here.</p>
+</header>
+
+{% if unread %}
+<form method="post" action="{{ url_for('care.notifications_read') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn--ghost btn--sm" type="submit">Mark all as read</button>
+</form>
+{% endif %}
+
+{% if items %}
+<section class="card card--flush">
+  <div class="rows">
+    {% for item in items %}
+    <div class="row">
+      <span class="row__time">{{ item.created_at | ago }}</span>
+      <span class="row__body">
+        <span class="row__title">{% if not item.read %}<span class="pill">New</span> {% endif %}{{ item.title }}</span>
+        <span class="row__sub">{{ item.body }}</span>
+      </span>
+      {% if item.link %}<a class="row__action btn btn--quiet btn--sm" href="{{ item.link }}">Open</a>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<div class="empty">
+  <p class="empty__title">Nothing to catch up on</p>
+  <p>When someone posts an update, joins a circle or hands you a task, it appears here.</p>
+</div>
+{% endif %}
+{% endblock %}

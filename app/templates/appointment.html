@@ -1,0 +1,56 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}{{ appt.title }} | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <p class="eyebrow">{{ appt.status }}</p>
+  <h1>{{ appt.title }}</h1>
+  <p class="page-head__lead">{{ appt.starts_at | dt }} · {{ appt.starts_at | clock }} · {{ appt.location or 'no location yet' }}</p>
+</header>
+
+<div class="grid-2">
+  <section class="card">
+    <h2 class="card__title">Before</h2>
+    <div class="field">
+      <p class="field__label">Who</p>
+      <p class="row__sub">{{ person.name if person else 'Not set' }}{% if person and person.org %} · {{ person.org }}{% endif %}</p>
+    </div>
+    <div class="field">
+      <p class="field__label">Driving</p>
+      <p class="row__sub">{{ (driver.name or driver.username) if driver else 'Nobody yet' }}</p>
+    </div>
+    <div class="field">
+      <p class="field__label">Questions to ask</p>
+      {% if appt.questions %}<ul>{% for q in appt.questions %}<li class="row__sub">— {{ q }}</li>{% endfor %}</ul>
+      {% else %}<p class="row__sub">None written down.</p>{% endif %}
+    </div>
+    <div class="field">
+      <p class="field__label">To bring</p>
+      {% if appt.bring %}<ul>{% for b in appt.bring %}<li class="row__sub">— {{ b }}</li>{% endfor %}</ul>
+      {% else %}<p class="row__sub">Nothing listed.</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">After</h2>
+    {% if 'manage_appointments' in caps %}
+    <form class="form-stack" method="post" action="{{ url_for('care.appointment_finish', appointment_id=appt._id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label class="field__label" for="notes">What happened, or what changed</label>
+        <textarea class="field__control" id="notes" name="notes_after" rows="5"
+          placeholder="Ramipril increased to 5 mg. Blood test requested in 2 weeks.">{{ appt.notes_after }}</textarea>
+        <p class="field__hint">Saving this also posts it to Updates, so nobody has to be told separately.</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn" type="submit" name="status" value="completed">{{ icon("check", 18) }} Mark done</button>
+        <button class="btn btn--ghost" type="submit" name="status" value="cancelled">Cancelled</button>
+      </div>
+    </form>
+    {% else %}
+    <p class="row__sub">{{ appt.notes_after or 'No notes yet.' }}</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

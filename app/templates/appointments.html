@@ -1,0 +1,91 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Appointments | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__title"><h1>Appointments</h1><span class="pill pill--quiet">{{ rows|length }}</span></div>
+  <p class="page-head__lead">Who, where, who is driving, what to ask and what to bring.</p>
+</header>
+
+<div class="toolbar">
+  <div class="segmented" role="group" aria-label="Filter">
+    {% for option in ['upcoming', 'past', 'all'] %}
+    <a href="{{ url_for('care.appointments', when=option) }}"{% if when == option %} aria-current="true"{% endif %}>{{ option|capitalize }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if 'manage_appointments' in caps %}
+<section class="card">
+  <details class="disclosure">
+  <summary>{{ icon("plus", 18) }} Add an appointment</summary>
+  <form class="form-grid disclosure__body" method="post" action="{{ url_for('care.appointment_add') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label class="field__label" for="a-title">What is it</label>
+      <input class="field__control" id="a-title" name="title" placeholder="Cardiology review" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="a-when">When</label>
+      <input class="field__control" id="a-when" name="starts_at" type="datetime-local" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="a-loc">Where</label>
+      <input class="field__control" id="a-loc" name="location" placeholder="Klinik Mitte, 2nd floor">
+    </div>
+    <div class="field">
+      <label class="field__label" for="a-person">Who</label>
+      <select class="field__control" id="a-person" name="person_id">
+        <option value="">Not set</option>
+        {% for person in people %}<option value="{{ person._id }}">{{ person.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="a-driver">Who is driving</label>
+      <select class="field__control" id="a-driver" name="driver_user_id">
+        <option value="">Not arranged</option>
+        {% for member in members %}<option value="{{ member.user._id }}">{{ member.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="a-questions">Questions to ask</label>
+      <textarea class="field__control" id="a-questions" name="questions" rows="3" placeholder="One per line"></textarea>
+    </div>
+    <div class="field">
+      <label class="field__label" for="a-bring">Documents to bring</label>
+      <textarea class="field__control" id="a-bring" name="bring" rows="3" placeholder="One per line"></textarea>
+    </div>
+    <div class="field"><button class="btn" type="submit">Add appointment</button></div>
+  </form>
+  </details>
+</section>
+{% endif %}
+
+{% if rows %}
+<section class="card card--flush">
+  <div class="rows">
+    {% for appt in rows %}
+    <div class="row">
+      <span class="row__lead" aria-hidden="true">{{ icon("calendar", 18) }}</span>
+      <span class="row__body">
+        <span class="row__sub">{{ appt.starts_at | dt('%d %b') }} · {{ appt.starts_at | clock }}</span>
+        <a class="row__title" href="{{ url_for('care.appointment', appointment_id=appt._id) }}">{{ appt.title }}</a>
+        <span class="row__sub">{{ appt.location or 'No location' }}</span>
+      </span>
+      <span class="row__action">
+        {% if appt.status == 'completed' %}<span class="pill pill--good">Done</span>
+        {% elif appt.status == 'cancelled' %}<span class="pill pill--quiet">Cancelled</span>
+        {% else %}<span class="pill">{{ appt.starts_at | day }}</span>{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<div class="empty">
+  <p class="empty__title">Nothing here</p>
+  <p>{% if when == 'past' %}Completed and cancelled appointments will appear here.{% else %}No upcoming appointments. Add the next one so nobody has to remember it.{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}

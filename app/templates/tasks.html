@@ -1,0 +1,121 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Tasks | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__title"><h1>Tasks</h1><span class="pill pill--quiet">{{ rows|length }} open</span></div>
+  <p class="page-head__lead">Every task has one owner and, usually, a date. That is the whole trick.</p>
+</header>
+
+{% if 'manage_tasks' in caps %}
+<section class="card">
+  <details class="disclosure">
+  <summary>{{ icon("plus", 18) }} Add a task</summary>
+  <form class="form-grid disclosure__body" method="post" action="{{ url_for('care.task_add') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label class="field__label" for="t-title">What needs doing</label>
+      <input class="field__control" id="t-title" name="title" placeholder="Collect prescription" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="t-owner">Who has it</label>
+      <select class="field__control" id="t-owner" name="owner_user_id">
+        <option value="">Nobody yet</option>
+        {% for member in members %}{% if member.user %}<option value="{{ member.user._id }}">{{ member.label }}</option>{% endif %}{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="t-due">When</label>
+      <input class="field__control" id="t-due" name="due_at" type="datetime-local">
+    </div>
+    <div class="field">
+      <label class="field__label" for="t-priority">Priority</label>
+      <select class="field__control" id="t-priority" name="priority">
+        <option value="normal">Normal</option>
+        <option value="soon">Soon</option>
+      </select>
+    </div>
+    <div class="field"><button class="btn" type="submit">Add task</button></div>
+  </form>
+  </details>
+</section>
+{% endif %}
+
+<div class="toolbar">
+  <form class="searchbar" method="get" action="{{ url_for('care.tasks') }}" role="search">
+    <label class="sr-only" for="tq">Search tasks</label>
+    <input class="field__control" id="tq" name="q" value="{{ query }}" placeholder="Search tasks">
+    <button class="btn btn--ghost" type="submit">Search</button>
+  </form>
+</div>
+
+{% if rows %}
+<section class="card card--flush">
+  <div class="rows">
+    {% for task in rows %}
+    <div class="row{% if task.priority == 'soon' %} row--attention{% endif %}">
+      <span class="row__lead" aria-hidden="true">{{ icon("tasks", 18) }}</span>
+      <span class="row__body">
+        <span class="row__title">{{ task.title }}</span>
+        <span class="row__sub">
+          {{ task.owner_label or 'Nobody yet' }}
+          {% if task.due_at %} · due {{ task.due_at | day }} {{ task.due_at | clock }}{% endif %}
+        </span>
+      </span>
+      <form class="row__action" method="post" action="{{ url_for('care.task_update', task_id=task._id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="done">
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn--ghost btn--sm" type="submit">Done</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<div class="empty">
+  <p class="empty__title">{% if query %}Nothing matched “{{ query }}”{% else %}No open tasks{% endif %}</p>
+  <p>{% if query %}Try a shorter word.{% else %}When something comes up, add it here with a name against it.{% endif %}</p>
+</div>
+{% endif %}
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Who is carrying the load</h2>
+    <span class="section__hint">Last 30 days — not a score, just a way to notice when it all lands on one person</span>
+  </div>
+  <div class="stats">
+    {% for row in load %}
+    <div class="stat">
+      <span class="stat__ico" aria-hidden="true">{{ icon("people", 18) }}</span>
+      <span class="stat__value">{{ row.total }}</span>
+      <span class="stat__label">{{ row.label }} · {{ row.completed }} done, {{ row.open }} open</span>
+    </div>
+    {% endfor %}
+    <div class="stat{% if unassigned %} stat--warn{% endif %}">
+      <span class="stat__ico" aria-hidden="true">{{ icon("alert", 18) }}</span>
+      <span class="stat__value">{{ unassigned }}</span>
+      <span class="stat__label">Unassigned</span>
+    </div>
+  </div>
+</section>
+
+{% if done %}
+<section class="section">
+  <div class="section__head"><h2 class="section__title">Recently done</h2></div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for task in done %}
+      <div class="row row--done">
+        <span class="row__body">
+          <span class="row__title">{{ task.title }}</span>
+          <span class="row__sub">{{ task.completed_by_name or 'someone' }} · {{ task.completed_at | ago }}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

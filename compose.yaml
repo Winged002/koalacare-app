@@ -1,0 +1,70 @@
+name: koalacare-app
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: koalacare_app
+    volumes:
+      - koalacare_app_mongo:/data/db
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - "--eval"
+        - "db.adminCommand({ ping: 1 }).ok"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: koalacare-app:local
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DB: koalacare_app
+      KOALACARE_ENV: production
+      KOALACARE_CANONICAL_HOST: ${KOALACARE_CANONICAL_HOST:-my.koalacare.app}
+      KOALACARE_ALIAS_HOSTS: ${KOALACARE_ALIAS_HOSTS:-}
+      KOALACARE_SECRET: ${KOALACARE_SECRET:-change-me-koalacare-app-secret}
+      KOALACARE_SEED_DEMO: ${KOALACARE_SEED_DEMO:-1}
+      KOALACARE_DEMO_USER: ${KOALACARE_DEMO_USER:-andrej}
+      KOALACARE_DEMO_PASSWORD: ${KOALACARE_DEMO_PASSWORD:-koalacare-demo-2026}
+      KOALACARE_UPLOAD_DIR: /data/uploads
+      PORT: "8000"
+    ports:
+      - "127.0.0.1:8792:8000"
+    volumes:
+      - koalacare_app_uploads:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request as u,sys; sys.exit(0 if u.urlopen('http://127.0.0.1:8000/healthz', timeout=4).status==200 else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+volumes:
+  koalacare_app_mongo:
+  koalacare_app_uploads:

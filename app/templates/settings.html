@@ -1,0 +1,79 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Settings | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head"><h1>Settings</h1><p class="page-head__lead">Your details, your password and the circles you are part of.</p></header>
+
+{% if error %}<p class="alert alert--error" role="alert"><span aria-hidden="true">{{ icon("alert", 18) }}</span><span>{{ error }}</span></p>{% endif %}
+{% if notice %}<p class="alert alert--good" role="status"><span aria-hidden="true">{{ icon("check", 18) }}</span><span>{{ notice }}</span></p>{% endif %}
+
+<div class="grid-2">
+  <section class="card">
+    <h2 class="card__title">Your details</h2>
+    <form class="form-stack" method="post" action="{{ url_for('care.settings') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="profile">
+      <div class="field">
+        <label class="field__label" for="s-name">Name</label>
+        <input class="field__control" id="s-name" name="name" value="{{ profile.name or '' }}">
+      </div>
+      <div class="field">
+        <label class="field__label" for="s-tz">Your timezone</label>
+        <select class="field__control" id="s-tz" name="timezone">
+          {% for zone in timezones %}<option value="{{ zone }}"{% if zone == profile.timezone %} selected{% endif %}>{{ zone }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label class="field__label" for="s-email">Email</label>
+        <input class="field__control" id="s-email" value="{{ profile.email }}" disabled>
+        <p class="field__hint">This is how invitations find you.</p>
+      </div>
+      <button class="btn" type="submit">Save details</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">Change your password</h2>
+    <form class="form-stack" method="post" action="{{ url_for('care.settings') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="password">
+      <div class="field">
+        <label class="field__label" for="s-current">Current password</label>
+        <input class="field__control" id="s-current" name="current_password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="field">
+        <label class="field__label" for="s-new">New password</label>
+        <input class="field__control" id="s-new" name="new_password" type="password" autocomplete="new-password" required>
+        <p class="field__hint">At least 10 characters.</p>
+      </div>
+      <button class="btn" type="submit">Update password</button>
+    </form>
+  </section>
+</div>
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Your circles</h2>
+    <span class="section__hint">{{ memberships|length }}</span>
+  </div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for membership in memberships %}
+      <div class="row">
+        <span class="row__lead" aria-hidden="true">{{ icon("circle", 18) }}</span>
+        <span class="row__body">
+          <a class="row__title" href="{{ url_for('care.today', circle=membership._id) }}">{{ membership.name }}</a>
+          <span class="row__sub">{{ role_labels.get(membership.role, membership.role) }} · {{ membership.timezone }}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<form method="post" action="{{ url_for('auth.logout') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn--ghost" type="submit">{{ icon("logout", 16) }} Sign out</button>
+</form>
+{% endblock %}

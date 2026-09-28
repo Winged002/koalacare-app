@@ -1,0 +1,68 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Review proposals | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <p class="eyebrow">Nothing saved yet</p>
+  <h1>Review these</h1>
+  <p class="page-head__lead">
+    KoalaCare read what you pasted and pulled out {{ proposal['items']|length }} thing{{ '' if proposal['items']|length == 1 else 's' }}.
+    Add the ones that are right and discard the rest. Nothing reaches the care record until you say so.
+  </p>
+</header>
+
+<p class="alert alert--info"><span aria-hidden="true">{{ icon("info", 18) }}</span><span>
+  This is a rule-based reader, not a guess: it looks for doses, verbs like “call” and “book”, and
+  follow-up wording. It can be wrong, which is exactly why you confirm each line.
+</span></p>
+
+{% if proposal['items'] %}
+<div class="form-stack">
+  {% for item in proposal['items'] %}
+  <article class="proposal">
+    <div class="card__head">
+      <span class="pill">{{ item.type }}</span>
+      {% if item.due_at %}<span class="card__hint">suggested {{ item.due_at }}</span>{% endif %}
+    </div>
+    <p class="row__title">
+      {% if item.type == 'medication' %}{{ item.name }} {{ item.strength }}{% if item.action == 'stop' %} → stop{% endif %}
+      {% else %}{{ item.title or item.text }}{% endif %}
+    </p>
+    <p class="proposal__quote">“{{ item.source }}”</p>
+    <div class="btn-row">
+      <form method="post" action="{{ url_for('care.proposal_decide', proposal_id=proposal._id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="index" value="{{ loop.index0 }}">
+        <input type="hidden" name="action" value="accept">
+        <button class="btn btn--sm" type="submit">Add to the record</button>
+      </form>
+      <form method="post" action="{{ url_for('care.proposal_decide', proposal_id=proposal._id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="index" value="{{ loop.index0 }}">
+        <input type="hidden" name="action" value="discard">
+        <button class="btn btn--quiet btn--sm" type="submit">Discard</button>
+      </form>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+
+<form method="post" action="{{ url_for('care.proposal_decide', proposal_id=proposal._id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="index" value="0">
+  <input type="hidden" name="action" value="accept_all">
+  <button class="btn btn--ghost" type="submit">Accept all {{ proposal['items']|length }}</button>
+</form>
+{% else %}
+<div class="empty">
+  <p class="empty__title">All reviewed</p>
+  <p>Nothing left from that note. <a href="{{ url_for('care.updates') }}">Back to updates</a>.</p>
+</div>
+{% endif %}
+
+<details class="card disclosure">
+  <summary class="card__title">What you pasted</summary>
+  <p class="row__sub prewrap">{{ proposal.source_text }}</p>
+</details>
+{% endblock %}

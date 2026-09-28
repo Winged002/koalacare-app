@@ -1,0 +1,47 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Search | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <p class="eyebrow">Search</p>
+  <h1>Find anything in this circle</h1>
+  <p class="page-head__lead">Updates, medications, tasks, appointments, documents and people — as far as your role reaches.</p>
+</header>
+
+<form class="searchbar" method="get" action="{{ url_for('care.search_view') }}" role="search">
+  <label class="sr-only" for="sq">Search this circle</label>
+  <input class="field__control" id="sq" name="q" value="{{ query }}" placeholder="e.g. Ramipril, prescription, Dr Müller" autofocus>
+  <button class="btn" type="submit">{{ icon("search", 18) }} Search</button>
+</form>
+
+{% if query and results.total %}
+  {% for title, items in results.groups %}
+  <section class="section">
+    <div class="section__head"><h2 class="section__title">{{ title }}</h2></div>
+    <div class="card card--flush">
+      <div class="rows">
+        {% for item in items %}
+        <div class="row">
+          <span class="row__body">
+            <a class="row__title" href="{{ item.href }}">{{ item.label }}</a>
+            <span class="row__sub">{{ item.sub }}</span>
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+{% elif query %}
+<div class="empty">
+  <p class="empty__title">Nothing found for “{{ query }}”</p>
+  <p>Try a medication name, a person, or a word from an update.</p>
+</div>
+{% else %}
+<div class="empty">
+  <p class="empty__title">What are you looking for?</p>
+  <p>Search looks at your circle only — never at circles you are not part of.</p>
+</div>
+{% endif %}
+{% endblock %}

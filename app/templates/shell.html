@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon, brand %}
+
+{% block body_class %}app{% endblock %}
+
+{% block body %}
+<a class="skip-link" href="#main">Skip to content</a>
+
+{# One description of the navigation, rendered three times: the desktop
+   sidebar, the mobile “More” drawer and the tab bar. Roles decide what
+   appears at all — nothing is hidden with CSS. #}
+{% set nav_items = [
+  ('care.today', 'Today', 'today', 'today'),
+  ('care.updates', 'Updates', 'updates', 'updates'),
+  ('care.medications', 'Medications', 'meds', 'medication'),
+  ('care.appointments', 'Appointments', 'appts', 'calendar'),
+  ('care.tasks', 'Tasks', 'tasks', 'tasks'),
+  ('care.documents', 'Documents', 'docs', 'documents'),
+  ('care.people', 'People', 'people', 'people'),
+  ('care.circle_home', 'Circle', 'circle', 'circle'),
+] %}
+{% set nav_secondary = [
+  ('care.changes', 'What changed', 'changes', 'changes'),
+  ('care.handover', 'End a visit', 'handover', 'handover'),
+  ('care.search_view', 'Search', 'search', 'search'),
+  ('care.notifications', 'Notifications', 'notifications', 'bell'),
+  ('care.settings', 'Settings', 'settings', 'settings'),
+] %}
+{% set allowed = {
+  'today': True,
+  'updates': 'view_updates' in caps,
+  'meds': 'view_medications' in caps,
+  'appts': 'view_appointments' in caps,
+  'tasks': 'view_tasks' in caps,
+  'docs': 'view_documents' in caps,
+  'people': 'view_people' in caps,
+  'circle': True,
+  'changes': 'view_changes' in caps,
+  'handover': 'use_handover' in caps,
+  'search': True,
+  'notifications': True,
+  'settings': True,
+} %}
+
+<aside class="sidebar">
+  <a class="sidebar__brand" href="{{ url_for('care.today') }}">
+    <span class="appbar__mark" aria-hidden="true">
+      {{ brand(22) }}
+    </span>
+    <span>KoalaCare</span>
+  </a>
+
+  {% if circle %}
+  <div class="sidebar__circle">
+    <p class="sidebar__who"><strong>{{ circle.name }}</strong>You are {{ role_label | lower }}</p>
+    {% if circles|length > 1 %}
+    {# The app bar carries this switcher too, but the app bar is display:none
+       from 900px up, so on a desktop this is the only place it can live. Same
+       no-JavaScript fallback as everywhere else. #}
+    <form class="sidebar__switch" method="post" action="{{ url_for('care.switch_circle') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <label class="sr-only" for="sidebar-circle">Switch circle</label>
+      <select class="field__control" id="sidebar-circle" name="circle" data-autosubmit>
+        {% for option in circles %}
+        <option value="{{ option._id }}"{% if circle and option._id == circle._id %} selected{% endif %}>{{ option.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn--ghost btn--sm btn--block" type="submit" data-autosubmit-fallback>Switch circle</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <a class="sidebar__find" href="{{ url_for('care.search_view') }}">
+    {{ icon('search', 16, 'nav-ico') }}<span>Search this circle</span>
+  </a>
+
+  <nav class="sidebar__nav" aria-label="Sections">
+    {% for endpoint, label, key, ico in nav_items %}
+      {% if allowed[key] %}
+      <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} aria-current="page"{% endif %}>
+        <span class="navlabel">{{ icon(ico, 18, "nav-ico") }}<span>{{ label }}</span></span>
+        {% if key == 'tasks' and nav_counts.get('tasks') %}<span class="pill pill--quiet">{{ nav_counts['tasks'] }}</span>{% endif %}
+      </a>
+      {% endif %}
+    {% endfor %}
+
+    <p class="sidebar__label">Your account</p>
+    {% for endpoint, label, key, ico in nav_secondary %}
+      {% if allowed[key] %}
+      <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} aria-current="page"{% endif %}>
+        <span class="navlabel">{{ icon(ico, 18, "nav-ico") }}<span>{{ label }}</span></span>
+        {% if endpoint == 'care.notifications' and unread %}<span class="pill">{{ unread }}</span>{% endif %}
+      </a>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <div class="sidebar__foot">
+    <p class="sidebar__who"><strong>{{ current_user.name or current_user.username }}</strong>{{ current_user.email }}</p>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn--ghost btn--sm btn--block" type="submit">{{ icon("logout", 16) }} Sign out</button>
+    </form>
+  </div>
+</aside>
+
+<header class="appbar">
+  <span class="appbar__mark" aria-hidden="true">
+    {{ brand(22) }}
+  </span>
+  <span class="appbar__circle">
+    <span class="appbar__name">{{ circle.name if circle else 'KoalaCare' }}</span>
+    <span class="appbar__who">{{ role_label or 'Set up your circle' }}</span>
+  </span>
+  <a class="appbar__spacer iconbtn" href="{{ url_for('care.search_view') }}" aria-label="Search">
+    {{ icon("search", 20) }}
+  </a>
+  <a class="iconbtn" href="{{ url_for('care.notifications') }}" aria-label="Notifications">
+    {{ icon("bell", 20) }}
+    {% if unread %}<span class="dot">{{ unread }}</span>{% endif %}
+  </a>
+  {% if circles|length > 1 %}
+  <form method="post" action="{{ url_for('care.switch_circle') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <label class="sr-only" for="circle-switch">Switch circle</label>
+    <select class="field__control" id="circle-switch" name="circle" data-autosubmit>
+      {% for option in circles %}
+      <option value="{{ option._id }}"{% if circle and option._id == circle._id %} selected{% endif %}>{{ option.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn--ghost btn--sm" type="submit" data-autosubmit-fallback>Switch</button>
+  </form>
+  {% endif %}
+</header>
+
+<main class="shell content" id="main">
+  {# The action that just finished says so here, once. Every page inherits it,
+     so no view has to remember to render its own confirmation. #}
+  {% if flash %}
+  <p class="alert alert--good" role="status">
+    <span aria-hidden="true">{{ icon("check", 18) }}</span>
+    <span>{{ flash }}</span>
+  </p>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<nav class="tabbar" aria-label="Primary">
+  <a href="{{ url_for('care.today') }}"{% if request.endpoint == 'care.today' %} aria-current="page"{% endif %}>
+    {{ icon("today", 22) }}Today
+  </a>
+  {% if allowed['updates'] %}
+  <a href="{{ url_for('care.updates') }}"{% if request.endpoint == 'care.updates' %} aria-current="page"{% endif %}>
+    {{ icon("updates", 22) }}Updates
+  </a>
+  {% endif %}
+  {% if allowed['meds'] %}
+  <a href="{{ url_for('care.medications') }}"{% if request.endpoint == 'care.medications' %} aria-current="page"{% endif %}>
+    {{ icon("medication", 22) }}Meds
+  </a>
+  {% endif %}
+  {% if allowed['tasks'] %}
+  <a href="{{ url_for('care.tasks') }}"{% if request.endpoint == 'care.tasks' %} aria-current="page"{% endif %}>
+    {{ icon("tasks", 22) }}Tasks{% if nav_counts.get('tasks') %}<span class="tabbar__count">{{ nav_counts['tasks'] }}</span>{% endif %}
+  </a>
+  {% endif %}
+  <a href="#more">
+    {{ icon("menu", 22) }}More
+  </a>
+</nav>
+
+<div class="drawer" id="more">
+  <div class="drawer__head">
+    <p class="drawer__title">{{ circle.name if circle else 'KoalaCare' }}</p>
+    <a class="drawer__close" href="#main">Close</a>
+  </div>
+  <div class="drawer__group">
+    <p class="drawer__label">Care</p>
+    {% for endpoint, label, key, ico in nav_items %}
+      {% if allowed[key] %}
+      <a class="drawer__link" href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} aria-current="page"{% endif %}><span class="navlabel">{{ icon(ico, 19, "nav-ico") }}<span>{{ label }}</span></span>{% if key == 'tasks' and nav_counts.get('tasks') %}<span class="pill pill--quiet">{{ nav_counts['tasks'] }}</span>{% endif %}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <div class="drawer__group">
+    <p class="drawer__label">Your account</p>
+    {% for endpoint, label, key, ico in nav_secondary %}
+      {% if allowed[key] %}
+      <a class="drawer__link" href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} aria-current="page"{% endif %}><span class="navlabel">{{ icon(ico, 19, "nav-ico") }}<span>{{ label }}</span></span>{% if endpoint == 'care.notifications' and unread %}<span class="pill">{{ unread }}</span>{% endif %}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <form method="post" action="{{ url_for('auth.logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn--ghost btn--block" type="submit">{{ icon("logout", 18) }} Sign out</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Updates | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__title"><h1>Updates</h1><span class="pill pill--quiet">{{ rows|length }}</span></div>
+  <p class="page-head__lead">Everything that happened, newest first. Anyone in the circle can add to this.</p>
+</header>
+
+<div class="toolbar">
+  <form class="searchbar" method="get" action="{{ url_for('care.updates') }}" role="search">
+    <label class="sr-only" for="q">Search updates</label>
+    <input class="field__control" id="q" name="q" value="{{ query }}" placeholder="Search updates">
+    <button class="btn btn--ghost" type="submit">Search</button>
+  </form>
+  <a class="btn btn--ghost" href="{{ url_for('care.changes') }}">{{ icon("changes", 16) }} What changed?</a>
+</div>
+
+{% if rows %}
+<section class="card">
+  <div class="feed">
+    {% for update in rows %}
+    <article class="feed__item feed__item--{{ update.kind }}">
+      <p class="feed__meta">
+        <span class="avatar avatar--sm avatar--{{ ['a', 'b', 'c', 'd'][loop.index0 % 4] }}" aria-hidden="true">{{ (update.author_name or '?')[:2] | upper }}</span>
+        <span class="pill pill--quiet">{{ update.kind }}</span>
+        {{ update.author_name }} · {{ update.created_at | dt }}
+      </p>
+      {% if update.title %}<p class="row__title">{{ update.title }}</p>{% endif %}
+      <p class="feed__body">{{ update.body }}</p>
+      {% if update['items'] %}
+      <div class="feed__items">
+        {% for item in update['items'] %}
+        <p class="feed__item-line">
+          <span class="feed__item-kind">{{ item.type }}</span>
+          <span>{{ item.text }}</span>
+        </p>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<div class="empty">
+  <p class="empty__title">{% if query %}Nothing matched “{{ query }}”{% else %}No updates yet{% endif %}</p>
+  <p>{% if query %}Try a shorter word.{% else %}Post the first one from Today — “Add update” is the fastest way in.{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}

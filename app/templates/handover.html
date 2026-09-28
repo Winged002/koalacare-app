@@ -1,0 +1,72 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}End a visit | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <p class="eyebrow">Handover</p>
+  <h1>End visit</h1>
+  <p class="page-head__lead">
+    Thirty seconds now saves the next person a phone call. Everything you write
+    here becomes the update the circle reads.
+  </p>
+</header>
+
+<form class="form-stack" method="post" action="{{ url_for('care.handover_submit') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <section class="card">
+    <h2 class="card__title">Medication</h2>
+    <p class="card__hint">Tick anything you prepared or gave.</p>
+    {% for med in medications %}
+    <label class="checkline">
+      <input type="checkbox" name="prepared_{{ med._id }}" value="1">
+      <span>{{ med.name }} {{ med.strength }} <span class="row__sub">{% for t in med.times %}{{ t }} {% endfor %}</span></span>
+    </label>
+    {% else %}
+    <p class="row__sub">No medications recorded yet.</p>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">How did it go?</h2>
+    <div class="field">
+      <label class="field__label" for="summary">One line for the circle</label>
+      <textarea class="field__control" id="summary" name="summary" rows="2"
+        placeholder="Margaret ate a good lunch and was cheerful." required></textarea>
+    </div>
+    <div class="field">
+      <label class="field__label" for="observations">Anything you noticed <span class="field__optional">one per line</span></label>
+      <textarea class="field__control" id="observations" name="observations" rows="3"
+        placeholder="More tired than usual this afternoon"></textarea>
+    </div>
+    <div class="field">
+      <label class="field__label" for="communication">Who did you speak to? <span class="field__optional">one per line</span></label>
+      <textarea class="field__control" id="communication" name="communication" rows="2"
+        placeholder="Pharmacy called about the prescription"></textarea>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">What needs doing next?</h2>
+    <p class="card__hint">Each line becomes a task with somebody's name on it.</p>
+    <div class="field">
+      <label class="field__label" for="tasks">Tasks</label>
+      <textarea class="field__control" id="tasks" name="tasks" rows="3"
+        placeholder="Collect prescription tomorrow"></textarea>
+    </div>
+    <div class="field">
+      <label class="field__label" for="task_owner">Who should have them</label>
+      <select class="field__control" id="task_owner" name="task_owner">
+        <option value="">Me</option>
+        {% for member in members %}{% if member.user %}<option value="{{ member.user._id }}">{{ member.label }}</option>{% endif %}{% endfor %}
+      </select>
+    </div>
+  </section>
+
+  <div class="btn-row">
+    <button class="btn" type="submit">{{ icon("check", 18) }} Finish visit</button>
+    <a class="btn btn--ghost" href="{{ url_for('care.today') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+.env.*
+*.pyc
+__pycache__/
+.pytest_cache/
+README.md
+compose.yaml
+data/
+*.sqlite3

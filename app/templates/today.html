@@ -1,0 +1,223 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Today | KoalaCare{% endblock %}
+
+{% block content %}
+{# The page a family opens every morning. Read order is deliberate:
+   1. where things stand  2. what is next  3. what needs a name on it
+   4. adding to the record  5. what happened. The old page led with an empty
+   textarea, which pushed the day's status below the fold. #}
+{% set due = view.doses | length %}
+{% set taken = (view.doses | selectattr('taken') | list) | length %}
+<header class="page-hero">
+  <div class="page-hero__backdrop" aria-hidden="true"></div>
+  <div class="page-hero__inner">
+    <p class="eyebrow">{{ greeting }}</p>
+    <div class="page-head__title">
+      <h1>{{ circle.name }}</h1>
+      <span class="pill pill--live">{{ role_label }}</span>
+    </div>
+    <p class="page-head__lead">{{ day | dy }} · everyone in the circle sees this page</p>
+    {% if members %}
+    <ul class="member-strip" aria-label="People in this circle">
+      {% for member in members[:6] %}
+      <li class="member-strip__item">
+        <span class="avatar avatar--sm avatar--{{ ['a', 'b', 'c', 'd'][loop.index0 % 4] }}" aria-hidden="true">{{ (member.label or '?')[:2] | upper }}</span>
+        {{ member.label }}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</header>
+
+<section class="stats" aria-label="How today is going">
+  <div class="stat">
+    <span class="stat__ico" aria-hidden="true">{{ icon("medication", 18) }}</span>
+    <span class="stat__value">{{ taken }}/{{ due }}</span>
+    <span class="stat__label">Doses ticked today</span>
+  </div>
+  <div class="stat{% if view.outstanding_doses %} stat--warn{% endif %}">
+    <span class="stat__ico" aria-hidden="true">{{ icon("alert", 18) }}</span>
+    <span class="stat__value">{{ view.outstanding_doses | length }}</span>
+    <span class="stat__label">Still to be given</span>
+  </div>
+  <div class="stat">
+    <span class="stat__ico" aria-hidden="true">{{ icon("tasks", 18) }}</span>
+    <span class="stat__value">{{ (view.tasks_due_soon | length) + (view.tasks_unassigned | length) }}</span>
+    <span class="stat__label">Tasks needing attention</span>
+  </div>
+  <div class="stat{% if view.appointments %} stat--accent{% endif %}">
+    <span class="stat__ico" aria-hidden="true">{{ icon("calendar", 18) }}</span>
+    <span class="stat__value">{{ view.appointments | length }}</span>
+    <span class="stat__label">Appointments in 24 hours</span>
+  </div>
+</section>
+
+<div class="grid-2">
+  <section class="card card--flush">
+    <div class="card__head">
+      <h2 class="card__title">Next</h2>
+      <span class="card__hint">the next 24 hours</span>
+    </div>
+
+    {% if view.doses %}
+    <div class="rows">
+      {% for dose in view.doses %}
+      <div class="dose{% if dose.taken %} dose--taken{% endif %}">
+        <form method="post" action="{{ url_for('care.dose_mark') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="medication_id" value="{{ dose.medication._id }}">
+          <input type="hidden" name="slot" value="{{ dose.slot }}">
+          <input type="hidden" name="on_date" value="{{ view.day | iso }}">
+          <input type="hidden" name="action" value="{{ 'clear' if dose.taken else 'taken' }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button class="dose__tick" type="submit" aria-label="{{ 'Undo' if dose.taken else 'Mark taken' }}: {{ dose.medication.name }} at {{ dose.slot }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M4.6 12.4 9.4 17.2 19.4 6.6"/></svg>
+          </button>
+        </form>
+        <span class="row__time">{{ dose.slot }}</span>
+        <span class="dose__name">
+          <span class="row__title">{{ dose.medication.name }} {{ dose.medication.strength }}</span>
+          <span class="row__sub">{{ dose.medication.dose }}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if view.appointments %}
+    <div class="rows">
+      {% for appt in view.appointments %}
+      <div class="row">
+        <span class="row__lead" aria-hidden="true">{{ icon("calendar", 18) }}</span>
+        <span class="row__body">
+          <a class="row__title" href="{{ url_for('care.appointment', appointment_id=appt._id) }}">{{ appt.title }}</a>
+          <span class="row__sub">{{ appt.starts_at | clock }}{% if appt.location %} · {{ appt.location }}{% endif %}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not view.doses and not view.appointments %}
+    <div class="empty">
+      <p class="empty__title">Nothing scheduled</p>
+      <p>No medication times or appointments in the next 24 hours.</p>
+    </div>
+    {% endif %}
+    {% if view.doses and not view.outstanding_doses %}
+    <p class="float-note">
+      <span class="float-note__dot" aria-hidden="true">✓</span>
+      <span>
+        <strong>Today is covered</strong>
+        <span>Every dose on today's list has been ticked</span>
+      </span>
+    </p>
+    {% endif %}
+  </section>
+
+  <section class="card card--flush">
+    <div class="card__head">
+      <h2 class="card__title">Needs attention</h2>
+      <span class="card__hint">so it does not fall to whoever remembers</span>
+    </div>
+    {% if view.tasks_unassigned or view.tasks_due_soon or view.outstanding_doses %}
+    <div class="rows">
+      {% for dose in view.outstanding_doses %}
+      <div class="row row--attention">
+        <span class="row__lead" aria-hidden="true">{{ icon("medication", 18) }}</span>
+        <span class="row__body">
+          <span class="row__title">{{ dose.medication.name }} {{ dose.medication.strength }} not ticked yet</span>
+          <span class="row__sub">Due at {{ dose.slot }}</span>
+        </span>
+      </div>
+      {% endfor %}
+      {% for task in view.tasks_due_soon %}
+      <div class="row row--attention">
+        <span class="row__body">
+          <span class="row__title">{{ task.title }}</span>
+          <span class="row__sub">Due {{ task.due_at | day }}</span>
+        </span>
+        <form class="row__action" method="post" action="{{ url_for('care.task_update', task_id=task._id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="done">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button class="btn btn--ghost btn--sm" type="submit">Done</button>
+        </form>
+      </div>
+      {% endfor %}
+      {% for task in view.tasks_unassigned %}
+      <div class="row">
+        <span class="row__body">
+          <span class="row__title">{{ task.title }}</span>
+          <span class="row__sub">Nobody has this yet</span>
+        </span>
+        <a class="row__action btn btn--quiet btn--sm" href="{{ url_for('care.tasks') }}">Assign</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <p class="empty__title">All clear</p>
+      <p>Everything due today has an owner.</p>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+{% if 'post_updates' in caps %}
+<section class="card">
+  <details class="disclosure">
+    <summary>{{ icon("plus", 18) }} Add an update</summary>
+    <div class="stack--tight">
+      <form class="form-stack" method="post" action="{{ url_for('care.post_update_view') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label class="field__label" for="update-body">What happened?</label>
+          <textarea class="field__control" id="update-body" name="body" rows="3"
+            placeholder="Mum saw Dr Müller. Ramipril increased to 5 mg and a blood test was requested." required></textarea>
+        </div>
+        <div class="toolbar">
+          <button class="btn" type="submit">Post update</button>
+          <span class="card__hint">Everyone in the circle will be able to read it</span>
+        </div>
+      </form>
+      {% if 'use_extract' in caps %}
+      <form class="form-stack" method="post" action="{{ url_for('care.structure') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label class="field__label" for="structure-text">Or paste a letter and let KoalaCare read it <span class="field__optional">nothing is saved until you confirm it</span></label>
+          <textarea class="field__control" id="structure-text" name="text" rows="3"
+            placeholder="Paste a discharge letter, or type a note from a visit."></textarea>
+        </div>
+        <button class="btn btn--ghost" type="submit">Read it and propose changes</button>
+      </form>
+      {% endif %}
+    </div>
+  </details>
+</section>
+{% endif %}
+
+{% if view.recent %}
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Recent</h2>
+    <a class="section__hint" href="{{ url_for('care.changes') }}">See what changed</a>
+  </div>
+  <div class="card">
+    <div class="feed">
+      {% for update in view.recent %}
+      <article class="feed__item feed__item--{{ update.kind }}">
+        <p class="feed__meta">
+          <span class="pill pill--quiet">{{ update.kind }}</span>
+          {{ update.author_name }} · {{ update.created_at | ago }}
+        </p>
+        <p class="feed__body">{{ update.body }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

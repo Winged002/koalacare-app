@@ -1,0 +1,101 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}People | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__title"><h1>People</h1><span class="pill pill--quiet">{{ members|length }} with access</span></div>
+  <p class="page-head__lead">Doctors, carers, family, the pharmacy and the neighbour with a spare key.</p>
+</header>
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">In this circle</h2>
+    <a class="section__hint" href="{{ url_for('care.circle_home') }}">Manage access</a>
+  </div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for member in members %}
+      <div class="person">
+        <span class="avatar avatar--{{ ['a', 'b', 'c', 'd'][loop.index0 % 4] }}" aria-hidden="true">{{ (member.label or '?')[:2] | upper }}</span>
+        <span class="row__body">
+          <span class="row__title">{{ member.label }}</span>
+          <span class="row__sub">{{ role_labels.get(member.role, member.role) }}{% if member.user and member.user.email %} · {{ member.user.email }}{% endif %}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if 'manage_people' in caps %}
+<section class="card">
+  <details class="disclosure">
+  <summary>{{ icon("plus", 18) }} Add someone</summary>
+  <form class="form-grid disclosure__body" method="post" action="{{ url_for('care.person_add') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label class="field__label" for="p-name">Name</label>
+      <input class="field__control" id="p-name" name="name" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="p-kind">Kind</label>
+      <select class="field__control" id="p-kind" name="kind">
+        {% for value, label in kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="p-org">Practice or organisation</label>
+      <input class="field__control" id="p-org" name="org">
+    </div>
+    <div class="field">
+      <label class="field__label" for="p-phone">Phone</label>
+      <input class="field__control" id="p-phone" name="phone" type="tel">
+    </div>
+    <div class="field">
+      <label class="field__label" for="p-email">Email</label>
+      <input class="field__control" id="p-email" name="email" type="email">
+    </div>
+    <div class="field">
+      <label class="field__label" for="p-notes">Notes</label>
+      <input class="field__control" id="p-notes" name="notes">
+    </div>
+    <div class="field"><button class="btn" type="submit">Add person</button></div>
+  </form>
+  </details>
+</section>
+{% endif %}
+
+{% for kind, rows in grouped.items() %}
+<section class="section">
+  <div class="section__head"><h2 class="section__title">{{ labels.get(kind, kind) }}</h2></div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for person in rows %}
+      <div class="person">
+        <span class="avatar" aria-hidden="true">{{ person.name[:2] | upper }}</span>
+        <span class="row__body">
+          <span class="row__title">{{ person.name }}</span>
+          <span class="row__sub">{{ person.org or labels.get(person.kind, '') }}{% if person.phone %} · {{ person.phone }}{% endif %}{% if person.email %} · {{ person.email }}{% endif %}</span>
+          {% if person.notes %}<span class="row__sub">{{ person.notes }}</span>{% endif %}
+        </span>
+        {% if 'manage_people' in caps %}
+        <form class="row__action" method="post" action="{{ url_for('care.person_remove', person_id=person._id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn--quiet btn--sm" type="submit">Remove</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endfor %}
+
+{% if not grouped %}
+<div class="empty">
+  <p class="empty__title">Nobody in the directory yet</p>
+  <p>Add the GP and the pharmacy first — they are the two numbers people reach for.</p>
+</div>
+{% endif %}
+{% endblock %}

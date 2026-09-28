@@ -1,0 +1,79 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Documents | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__title"><h1>Documents</h1><span class="pill pill--quiet">{{ rows|length }} on file</span></div>
+  <p class="page-head__lead">Prescriptions, discharge letters, results and care plans — findable at 2am.</p>
+</header>
+
+{% if error %}
+<p class="alert alert--error" role="alert"><span aria-hidden="true">{{ icon("alert", 18) }}</span><span>{{ error }}</span></p>
+{% endif %}
+
+{% if 'manage_documents' in caps %}
+<section class="card">
+  <details class="disclosure"{% if error %} open{% endif %}>
+  <summary>{{ icon("plus", 18) }} Add a document</summary>
+  <form class="form-grid disclosure__body" method="post" action="{{ url_for('care.document_add') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label class="field__label" for="d-title">Title</label>
+      <input class="field__control" id="d-title" name="title" placeholder="Discharge letter, cardiology">
+    </div>
+    <div class="field">
+      <label class="field__label" for="d-kind">Type</label>
+      <select class="field__control" id="d-kind" name="kind">
+        {% for value, label in kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <p class="field__hint">Powers of attorney are restricted to the organiser.</p>
+    </div>
+    <div class="field">
+      <label class="field__label" for="d-date">Date on the document</label>
+      <input class="field__control" id="d-date" name="doc_date" type="date">
+    </div>
+    <div class="field">
+      <label class="field__label" for="d-file">File</label>
+      <input class="field__control" id="d-file" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.doc,.docx">
+      <p class="field__hint">Up to {{ max_mb }} MB. PDF, image, text or Word.</p>
+    </div>
+    <div class="field">
+      <label class="field__label" for="d-notes">Notes</label>
+      <textarea class="field__control" id="d-notes" name="notes" rows="2"></textarea>
+    </div>
+    <div class="field"><button class="btn" type="submit">Save document</button></div>
+  </form>
+  </details>
+</section>
+{% endif %}
+
+{% if rows %}
+<section class="card card--flush">
+  <div class="rows">
+    {% for doc in rows %}
+    <div class="row">
+      <span class="row__lead" aria-hidden="true">{{ icon("documents", 18) }}</span>
+      <span class="row__body">
+        <span class="row__title">{{ doc.title }}</span>
+        <span class="row__sub">
+          {{ labels.get(doc.kind, doc.kind) }}
+          {% if doc.doc_date %} · dated {{ doc.doc_date }}{% endif %}
+          {% if doc.restricted %} · <span class="pill pill--warn">Restricted</span>{% endif %}
+        </span>
+        {% if doc.notes %}<span class="row__sub">{{ doc.notes }}</span>{% endif %}
+      </span>
+      <span class="row__action">
+        {% if doc.stored_name %}<a class="btn btn--ghost btn--sm" href="{{ url_for('care.document_file', document_id=doc._id) }}">{{ icon("download", 16) }} Download</a>{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% else %}
+<div class="empty">
+  <p class="empty__title">No documents yet</p>
+  <p>Add the repeat prescription first. Everything else the family needs hangs off it.</p>
+</div>
+{% endif %}
+{% endblock %}

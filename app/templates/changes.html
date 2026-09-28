@@ -1,0 +1,110 @@
+{% extends "shell.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}What changed | KoalaCare{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <p class="eyebrow">Since you last looked</p>
+  <h1>What changed</h1>
+  <p class="page-head__lead">
+    {% if summary.is_first_visit %}Your first look at this circle — here is where things stand.
+    {% else %}Everything since {{ summary.since | dt }}.{% endif %}
+  </p>
+</header>
+
+<section class="stats" aria-label="What changed">
+  <div class="stat">
+    <span class="stat__ico" aria-hidden="true">{{ icon("medication", 18) }}</span>
+    <span class="stat__value">{{ summary.medication_changes | length }}</span>
+    <span class="stat__label">Medication changes</span>
+  </div>
+  <div class="stat">
+    <span class="stat__ico" aria-hidden="true">{{ icon("check", 18) }}</span>
+    <span class="stat__value">{{ summary.completed_appointments }}</span>
+    <span class="stat__label">Appointments completed</span>
+  </div>
+  <div class="stat{% if summary.upcoming_appointments %} stat--accent{% endif %}">
+    <span class="stat__ico" aria-hidden="true">{{ icon("calendar", 18) }}</span>
+    <span class="stat__value">{{ summary.upcoming_appointments }}</span>
+    <span class="stat__label">Still upcoming</span>
+  </div>
+  <div class="stat">
+    <span class="stat__ico" aria-hidden="true">{{ icon("check", 18) }}</span>
+    <span class="stat__value">{{ summary.tasks_done }}</span>
+    <span class="stat__label">Tasks completed</span>
+  </div>
+  <div class="stat">
+    <span class="stat__ico" aria-hidden="true">{{ icon("tasks", 18) }}</span>
+    <span class="stat__value">{{ summary.tasks_open }}</span>
+    <span class="stat__label">Tasks still open</span>
+  </div>
+  <div class="stat">
+    <span class="stat__ico" aria-hidden="true">{{ icon("documents", 18) }}</span>
+    <span class="stat__value">{{ summary.new_documents | length }}</span>
+    <span class="stat__label">New documents</span>
+  </div>
+</section>
+
+{% if summary.medication_changes %}
+<section class="section">
+  <div class="section__head"><h2 class="section__title">Medication</h2></div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for change in summary.medication_changes %}
+      <div class="row">
+        <span class="row__time">{{ change.changed_at | ago }}</span>
+        <span class="row__body">
+          <span class="row__title">{{ change.medication_name }}</span>
+          <span class="row__sub">{{ change.from_value }} → {{ change.to_value }}{% if change.note %} · {{ change.note }}{% endif %}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if summary.tasks_unassigned %}
+<p class="alert alert--warn"><span aria-hidden="true">{{ icon("alert", 18) }}</span><span>
+  {{ summary.tasks_unassigned }} open task{{ '' if summary.tasks_unassigned == 1 else 's' }} still has nobody's name on it.
+  <a href="{{ url_for('care.tasks') }}">Assign them</a>.
+</span></p>
+{% endif %}
+
+{% if summary.new_documents %}
+<section class="section">
+  <div class="section__head"><h2 class="section__title">Documents</h2></div>
+  <div class="card card--flush">
+    <div class="rows">
+      {% for doc in summary.new_documents %}
+      <div class="row">
+        <span class="row__time">{{ doc.created_at | ago }}</span>
+        <span class="row__body"><span class="row__title">{{ doc.title }}</span><span class="row__sub">{{ doc.uploaded_by_name }}</span></span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section">
+  <div class="section__head">
+    <h2 class="section__title">Updates</h2>
+    <a class="section__hint" href="{{ url_for('care.updates') }}">Open the full feed</a>
+  </div>
+  <div class="card">
+    {% if summary.new_updates %}
+    <div class="feed">
+      {% for update in summary.new_updates %}
+      <article class="feed__item feed__item--{{ update.kind }}">
+        <p class="feed__meta"><span class="pill pill--quiet">{{ update.kind }}</span> {{ update.author_name }} · {{ update.created_at | ago }}</p>
+        <p class="feed__body">{{ update.body }}</p>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty"><p class="empty__title">Nothing new</p><p>It has been quiet since you last looked.</p></div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import brand, icon %}
+{% block body_class %}auth{% endblock %}
+{% block title %}Welcome | KoalaCare{% endblock %}
+
+{% block body %}
+<section class="auth__card">
+  <a class="auth__brand" href="/">
+    <span class="appbar__mark" aria-hidden="true">
+      {{ brand(22) }}
+    </span>
+    <span>KoalaCare</span>
+  </a>
+
+  <h1>Welcome, {{ current_user.name or current_user.username }}</h1>
+
+  {% if waiting %}
+  <p class="alert alert--info"><span aria-hidden="true">{{ icon("mail", 18) }}</span><span>
+    You have {{ waiting|length }} invitation{{ '' if waiting|length == 1 else 's' }} waiting.
+    Open the link you were sent, or ask the organiser to send it again.
+  </span></p>
+  {% endif %}
+
+  <p class="page-head__lead">
+    Start a circle for the person you are looking after. You can invite the rest
+    of the family, carers and doctors straight afterwards.
+  </p>
+
+  {% if error %}
+  <p class="alert alert--error" role="alert"><span aria-hidden="true">{{ icon("alert", 18) }}</span><span>{{ error }}</span></p>
+  {% endif %}
+
+  <form class="form-stack" method="post" action="{{ url_for('auth.welcome') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label class="field__label" for="name">Name of the circle</label>
+      <input class="field__control" id="name" name="name" placeholder="Margaret's circle" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="subject_name">Who is it for? <span class="field__optional">optional</span></label>
+      <input class="field__control" id="subject_name" name="subject_name" placeholder="Margaret">
+    </div>
+    <div class="field">
+      <label class="field__label" for="timezone">Timezone</label>
+      <select class="field__control" id="timezone" name="timezone">
+        {% for zone in timezones %}
+        <option value="{{ zone }}"{% if zone == default_timezone %} selected{% endif %}>{{ zone }}</option>
+        {% endfor %}
+      </select>
+      <p class="field__hint">Medication times and appointments are shown in this timezone.</p>
+    </div>
+    <button class="btn btn--block" type="submit">Create circle</button>
+  </form>
+
+  <form method="post" action="{{ url_for('auth.logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn--quiet btn--block" type="submit">Sign out</button>
+  </form>
+</section>
+{% endblock %}

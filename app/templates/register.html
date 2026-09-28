@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import brand, icon %}
+{% block body_class %}auth{% endblock %}
+{% block title %}Create an account | KoalaCare{% endblock %}
+
+{% block body %}
+<section class="auth__card">
+  <a class="auth__brand" href="/">
+    <span class="appbar__mark" aria-hidden="true">
+      {{ brand(22) }}
+    </span>
+    <span>KoalaCare</span>
+  </a>
+
+  <h1>Create your account</h1>
+  <p class="page-head__lead">No card, no fees while we are building this.</p>
+
+  {% if error %}
+  <p class="alert alert--error" role="alert"><span aria-hidden="true">{{ icon("alert", 18) }}</span><span>{{ error }}</span></p>
+  {% endif %}
+
+  <form class="form-stack" method="post" action="{{ url_for('auth.register') }}">
+    <div class="field">
+      <label class="field__label" for="name">Your name</label>
+      <input class="field__control" id="name" name="name" value="{{ values.name }}" autocomplete="name" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="username">Username</label>
+      <input class="field__control" id="username" name="username" value="{{ values.username }}" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label class="field__label" for="email">Email</label>
+      <input class="field__control" id="email" name="email" type="email" value="{{ values.email }}" autocomplete="email" required>
+      <p class="field__hint">Used to match you to any invitation you have been sent.</p>
+    </div>
+    <div class="field">
+      <label class="field__label" for="timezone">Your timezone</label>
+      <select class="field__control" id="timezone" name="timezone">
+        {% for zone in timezones %}
+        <option value="{{ zone }}"{% if zone == default_timezone %} selected{% endif %}>{{ zone }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="password">Password</label>
+      <input class="field__control" id="password" name="password" type="password" autocomplete="new-password" required>
+      <p class="field__hint">At least 10 characters.</p>
+    </div>
+    <button class="btn btn--block" type="submit">Create account</button>
+  </form>
+
+  <p class="auth__foot">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a>.</p>
+</section>
+{% endblock %}
