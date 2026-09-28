@@ -18,6 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
 
 COPY app ./app
 COPY tests ./tests
+# For the seeding-posture guard: checked in the build stage, never shipped.
+COPY compose.yaml README.md ./
 
 RUN python -m unittest discover -s tests -p "test_*.py" -v
 

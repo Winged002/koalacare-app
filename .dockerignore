@@ -5,7 +5,8 @@
 *.pyc
 __pycache__/
 .pytest_cache/
-README.md
-compose.yaml
+# README.md and compose.yaml stay in the build context so the build stage can
+# check them for repository defaults; they are never copied into the runtime
+# image.
 data/
 *.sqlite3

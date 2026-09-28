@@ -1025,10 +1025,15 @@ class SeedPostureTests(BaseCase):
         self.assertEqual(self.db["users"].count_documents({}), 1)
 
     def test_no_repository_file_ships_a_default_demo_password(self):
+        # The build stage copies compose.yaml and README.md in beside app/, so
+        # this guard runs on every release, not only from a full checkout.
         root = Path(__file__).resolve().parents[1]
-        for name in ("compose.yaml", "app/main.py", "README.md"):
-            text = (root / name).read_text(encoding="utf-8")
-            self.assertNotIn("koalacare-demo-2026", text, name)
+        for name in ("compose.yaml", "README.md", "app/main.py"):
+            path = root / name
+            self.assertTrue(path.exists(), f"{name} must be present for this guard")
+            self.assertNotIn(
+                "koalacare-demo-2026", path.read_text(encoding="utf-8"), name
+            )
 
 
 if __name__ == "__main__":
