@@ -12,3 +12,6 @@ venv/
 data/
 
 .DS_Store
+
+# term_5 local environment / secrets
+!.env.example
