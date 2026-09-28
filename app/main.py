@@ -11,11 +11,12 @@ import os
 import time
 from datetime import date, datetime, timedelta
 
-from flask import Flask, g, jsonify, redirect, render_template, request, url_for
+from flask import Flask, Response, g, jsonify, redirect, render_template, request, url_for
 from pymongo.errors import DuplicateKeyError
 
 from . import accounts, care, domain, security
 from .db import Database
+from .icons import bp as icons_blueprint
 from .security import RateLimiter, load_identity, set_reveal, take_reveal
 from .timing import (
     DEFAULT_TIMEZONE,
@@ -319,6 +320,7 @@ def create_app(config: dict | None = None, mongo_client=None) -> Flask:
                 pass
 
     install_template_helpers(app)
+    app.register_blueprint(icons_blueprint)
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(care_blueprint)
 
@@ -372,6 +374,12 @@ def create_app(config: dict | None = None, mongo_client=None) -> Flask:
             )
         return response
 
+    @app.get("/robots.txt")
+    def robots_txt():
+        # A sign-in-only product: keep crawlers off every path, so nothing —
+        # invite links included — is indexed or followed.
+        return Response("User-agent: *\nDisallow: /\n", mimetype="text/plain")
+
     @app.errorhandler(403)
     def handle_403(_error):
         return (
@@ -395,6 +403,19 @@ def create_app(config: dict | None = None, mongo_client=None) -> Flask:
                 message="The link may be out of date, or it may belong to a circle you are not in.",
             ),
             404,
+        )
+
+    @app.errorhandler(405)
+    def handle_405(_error):
+        return (
+            render_template(
+                "error.html",
+                code=405,
+                title="That page does not open on its own",
+                message="This address only works when a page inside KoalaCare "
+                        "sends it an action. Start from Today and use the buttons there.",
+            ),
+            405,
         )
 
     @app.errorhandler(500)

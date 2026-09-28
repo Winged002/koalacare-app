@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+import struct
 import sys
 import unittest
 from datetime import timedelta
@@ -1034,6 +1035,44 @@ class SeedPostureTests(BaseCase):
             self.assertNotIn(
                 "koalacare-demo-2026", path.read_text(encoding="utf-8"), name
             )
+
+
+class EdgesAndAssetsTests(BaseCase):
+    """Launch edges: direct hits on action-only addresses, the icons the shell
+    promises, and crawl hygiene for a product that must never be indexed.
+    """
+
+    def test_get_on_an_action_only_address_gets_the_designed_page(self):
+        # /doses and /structure exist for forms to POST to; a direct GET must
+        # land on the product's own error page, not a bare framework default.
+        for path in ("/doses", "/structure"):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 405, path)
+            self.assertIn(b"That page does not open on its own", response.data)
+
+    def test_apple_touch_icon_is_a_real_png(self):
+        response = self.client.get("/apple-touch-icon.png")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/png")
+        body = response.data
+        self.assertEqual(body[:8], b"\x89PNG\r\n\x1a\n")
+        width, height = struct.unpack(">II", body[16:24])
+        self.assertEqual((width, height), (180, 180))
+
+    def test_favicon_ico_is_a_multi_size_icon(self):
+        response = self.client.get("/favicon.ico")
+        self.assertEqual(response.status_code, 200)
+        body = response.data
+        self.assertEqual(body[:4], b"\x00\x00\x01\x00")
+        self.assertEqual(struct.unpack("<H", body[4:6])[0], 3)
+        self.assertEqual(body[6:8], bytes((16, 16)))  # first entry: 16x16
+        self.assertEqual(struct.unpack("<H", body[12:14])[0], 32)  # 32-bit
+
+    def test_robots_txt_keeps_crawlers_out(self):
+        response = self.client.get("/robots.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/plain", response.headers["Content-Type"])
+        self.assertEqual(response.data, b"User-agent: *\nDisallow: /\n")
 
 
 if __name__ == "__main__":
