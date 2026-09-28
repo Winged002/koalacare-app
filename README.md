@@ -95,8 +95,8 @@ All configuration is environment based.
 | `KOALACARE_CANONICAL_HOST` | `my.koalacare.app` | The one origin that is served and indexed. |
 | `KOALACARE_ALIAS_HOSTS` | empty | Comma-separated hosts that permanently redirect to the canonical host (`301` for `GET`/`HEAD`, `308` otherwise). |
 | `KOALACARE_UPLOAD_DIR` | `/data/uploads` | Where uploaded documents are written. |
-| `KOALACARE_SEED_DEMO` | `1` in Compose | Seeds a populated demo circle so nothing you open is blank. |
-| `KOALACARE_DEMO_USER` / `KOALACARE_DEMO_PASSWORD` | `andrej` / `koalacare-demo-2026` | Credentials for the seeded demo accounts. |
+| `KOALACARE_SEED_DEMO` | `0` (off) | Opt in (`1`) to seed a populated demo circle. Production stays `0`; staging/dev enable it explicitly. |
+| `KOALACARE_DEMO_USER` / `KOALACARE_DEMO_PASSWORD` | `andrej` / *(none)* | Credentials for the seeded demo accounts. There is no built-in password: seeding is skipped unless `KOALACARE_DEMO_PASSWORD` is set explicitly. |
 | `PORT` | `8000` | Container port. |
 
 ## Security posture and known gaps
@@ -113,10 +113,11 @@ All configuration is environment based.
 * The web container is read-only, `cap_drop: ALL`, `no-new-privileges`, has a 32 MB
   tmpfs for `/tmp`, and never receives the Docker socket. MongoDB is on the Compose
   network and is **not** published to the host.
-* **Deliberate gaps in this build:** the demo password above is public knowledge, so
-  it is the first thing to change (Settings → password) or disable
-  (`KOALACARE_SEED_DEMO=0`); MongoDB runs without authentication inside the Compose
-  network; invite tokens appear in URL paths and can therefore land in access logs.
+* **Deliberate gaps in this build:** MongoDB runs without authentication inside the
+  Compose network, and invite tokens appear in URL paths and can therefore land in
+  access logs. Demo accounts are only created when an operator deliberately sets
+  `KOALACARE_SEED_DEMO=1` **and** `KOALACARE_DEMO_PASSWORD`; a fresh production
+  database starts empty and is claimed by its first real user.
 * `app/_context_snippet.py` is an inert, superseded module kept only because the
   workspace tooling that built this project cannot delete files. It is safe to remove.
 

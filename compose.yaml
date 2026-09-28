@@ -39,9 +39,12 @@ services:
       KOALACARE_ALIAS_HOSTS: ${KOALACARE_ALIAS_HOSTS:-}
       KOALACARE_COOKIE_SECURE: ${KOALACARE_COOKIE_SECURE:-true}
       KOALACARE_SECRET: ${KOALACARE_SECRET:-change-me-koalacare-app-secret}
-      KOALACARE_SEED_DEMO: ${KOALACARE_SEED_DEMO:-1}
+      # Demo seeding is opt-in: set KOALACARE_SEED_DEMO=1 AND an explicit
+      # KOALACARE_DEMO_PASSWORD (staging/dev). There is no built-in password,
+      # and production stays at 0 so a fresh database starts empty.
+      KOALACARE_SEED_DEMO: ${KOALACARE_SEED_DEMO:-0}
       KOALACARE_DEMO_USER: ${KOALACARE_DEMO_USER:-andrej}
-      KOALACARE_DEMO_PASSWORD: ${KOALACARE_DEMO_PASSWORD:-koalacare-demo-2026}
+      KOALACARE_DEMO_PASSWORD: ${KOALACARE_DEMO_PASSWORD:-}
       KOALACARE_UPLOAD_DIR: /data/uploads
       PORT: "8000"
     ports:

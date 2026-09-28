@@ -39,18 +39,22 @@ def _host_list(value: str) -> set:
     return {host.strip().lower() for host in (value or "").split(",") if host.strip()}
 
 
-def _seed_demo(db) -> None:
+def _seed_demo(db, password: str) -> str:
     """Build a small, realistic circle so the product is explorable on first
-    run. Every account here uses the same known demo password, which is why
-    KOALACARE_SEED_DEMO exists to turn the whole thing off.
+    run. Seeding is opt-in (KOALACARE_SEED_DEMO) and always needs an explicit
+    KOALACARE_DEMO_PASSWORD — there is deliberately no built-in fallback, so an
+    unconfigured environment can never quietly recreate a known demo account.
+    Returns a short outcome for the boot log.
     """
+    if not (password or "").strip():
+        return "skipped: KOALACARE_DEMO_PASSWORD is empty"
     # A previous attempt may have died part-way, so "is this done?" is judged by
     # whether the demo circle has content, not by whether a lock row exists.
     circle = db["circles"].find_one({"name": "Margaret"})
     if circle and db["medications"].count_documents({"circle_id": circle["_id"]}) > 0:
-        return
+        return "already seeded"
     if db["circles"].count_documents({}) > 0 and not circle:
-        return  # real data belonging to a real user; never touch it
+        return "skipped: the database already has a real circle"
 
     # gunicorn boots both workers at once; claiming a fixed _id is atomic.
     try:
@@ -59,7 +63,6 @@ def _seed_demo(db) -> None:
         pass
 
     username = os.environ.get("KOALACARE_DEMO_USER") or "andrej"
-    password = os.environ.get("KOALACARE_DEMO_PASSWORD") or "koalacare-demo-2026"
 
     accounts_spec = [
         (username, "Andrej", "andrej@example.com"),
@@ -81,7 +84,7 @@ def _seed_demo(db) -> None:
 
     owner = created.get(username)
     if not owner:
-        return
+        return "skipped: the demo account could not be created"
 
     if circle is None:
         circle = domain.create_circle(
@@ -197,6 +200,7 @@ def _seed_demo(db) -> None:
         body="Mum saw Dr Müller. Ramipril increased to 5 mg and a blood test was requested.",
         kind="appointment", title="Cardiology review notes",
     )
+    return "seeded the demo circle"
 
 
 # ------------------------------------------------------------------ filters
@@ -287,18 +291,32 @@ def create_app(config: dict | None = None, mongo_client=None) -> Flask:
     app.extensions["kc_take_reveal"] = lambda: take_reveal(database.db)
     app.extensions["kc_set_reveal"] = lambda payload: set_reveal(database.db, payload)
 
-    if database.ready and (os.environ.get("KOALACARE_SEED_DEMO") or "0").strip().lower() in {
+    seed_requested = (os.environ.get("KOALACARE_SEED_DEMO") or "0").strip().lower() in {
         "1",
         "true",
         "yes",
-    }:
-        try:
-            _seed_demo(database.db)
-        except Exception:  # noqa: BLE001
-            # Demo data is a convenience, never a dependency. gunicorn boots
-            # several workers at once and they can legitimately race on the
-            # same insert, so a failure here must not stop a worker booting.
-            pass
+    }
+    seed_password = (os.environ.get("KOALACARE_DEMO_PASSWORD") or "").strip()
+    if database.ready:
+        if not seed_requested:
+            app.logger.info(
+                "demo seeding is off (set KOALACARE_SEED_DEMO=1 and an explicit "
+                "KOALACARE_DEMO_PASSWORD to seed a demo circle)"
+            )
+        elif not seed_password:
+            app.logger.warning(
+                "demo seeding was requested but KOALACARE_DEMO_PASSWORD is empty; "
+                "refusing to create demo accounts with no configured password"
+            )
+        else:
+            try:
+                outcome = _seed_demo(database.db, password=seed_password)
+                app.logger.info("demo seeding: %s", outcome)
+            except Exception:  # noqa: BLE001
+                # Demo data is a convenience, never a dependency. gunicorn boots
+                # several workers at once and they can legitimately race on the
+                # same insert, so a failure here must not stop a worker booting.
+                pass
 
     install_template_helpers(app)
     app.register_blueprint(auth_blueprint)

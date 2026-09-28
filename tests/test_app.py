@@ -932,5 +932,104 @@ class LayoutConsistencyTests(unittest.TestCase):
             )
 
 
+class SeedPostureTests(BaseCase):
+    """Seeding is a deliberate act: a fresh database stays empty unless the
+    operator enables it and supplies a password, and the old built-in demo
+    password is gone from the repository.
+    """
+
+    DEMO_PASSWORD = "seed-posture-test-password"
+
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(self._clear_seed_env)
+
+    def _clear_seed_env(self):
+        os.environ.pop("KOALACARE_SEED_DEMO", None)
+        os.environ.pop("KOALACARE_DEMO_PASSWORD", None)
+
+    def boot(self, seed=None, password=None, mongo=None):
+        """Boot a fresh app against a fresh in-memory MongoDB."""
+        if seed is None:
+            os.environ.pop("KOALACARE_SEED_DEMO", None)
+        else:
+            os.environ["KOALACARE_SEED_DEMO"] = seed
+        if password is None:
+            os.environ.pop("KOALACARE_DEMO_PASSWORD", None)
+        else:
+            os.environ["KOALACARE_DEMO_PASSWORD"] = password
+        self.mongo = mongo if mongo is not None else mongomock.MongoClient()
+        self.app = create_app(mongo_client=self.mongo)
+        self.app.config.update(TESTING=True)
+        self.db = self.app.extensions["kc_db"]
+        self.client = self.app.test_client()
+        return self.client
+
+    def assert_login_refused(self, client, password):
+        response = client.post(
+            "/login", data={"username": "andrej", "password": password}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Invalid username or password", response.data)
+        self.assertIsNone(client.get_cookie("kc_app"))
+
+    def test_a_fresh_install_stays_empty_and_claimable(self):
+        # The production posture: nothing requested, so nothing is created.
+        with self.assertLogs("app.main", level="INFO") as captured:
+            client = self.boot()
+        self.assertTrue(any("demo seeding is off" in line for line in captured.output))
+        self.assertEqual(self.db["users"].count_documents({}), 0)
+        self.assertEqual(self.db["circles"].count_documents({}), 0)
+        # The old repository default must not open anything on an empty database.
+        self.assert_login_refused(client, "koalacare-demo-2026")
+        # The first real person can still claim the product.
+        self.assertIsNotNone(self.make_account(client))
+
+    def test_seeding_is_refused_without_an_explicit_password(self):
+        # Opted in, but no password to create accounts with: fail closed.
+        with self.assertLogs("app.main", level="WARNING") as captured:
+            client = self.boot(seed="1")
+        self.assertTrue(
+            any("KOALACARE_DEMO_PASSWORD" in line for line in captured.output)
+        )
+        self.assertEqual(self.db["users"].count_documents({}), 0)
+        self.assert_login_refused(client, "koalacare-demo-2026")
+
+    def test_seeding_builds_the_demo_circle_with_the_configured_password(self):
+        with self.assertLogs("app.main", level="INFO") as captured:
+            client = self.boot(seed="1", password=self.DEMO_PASSWORD)
+        self.assertTrue(
+            any("seeded the demo circle" in line for line in captured.output)
+        )
+        self.assertIsNotNone(self.db["circles"].find_one({"name": "Margaret"}))
+        self.assertGreaterEqual(self.db["users"].count_documents({}), 6)
+        # The seeded accounts answer to the configured password...
+        response = client.post(
+            "/login", data={"username": "andrej", "password": self.DEMO_PASSWORD}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNotNone(client.get_cookie("kc_app"))
+        # ...and never to the old repository default.
+        self.assert_login_refused(self.app.test_client(), "koalacare-demo-2026")
+
+    def test_seeding_never_touches_a_database_that_already_has_a_real_circle(self):
+        client = self.boot()
+        self.make_account(client)
+        self.make_circle(client, name="Our family")
+        with self.assertLogs("app.main", level="INFO") as captured:
+            self.boot(seed="1", password=self.DEMO_PASSWORD, mongo=self.mongo)
+        self.assertTrue(
+            any("already has a real circle" in line for line in captured.output)
+        )
+        self.assertEqual(self.db["circles"].count_documents({}), 1)
+        self.assertEqual(self.db["users"].count_documents({}), 1)
+
+    def test_no_repository_file_ships_a_default_demo_password(self):
+        root = Path(__file__).resolve().parents[1]
+        for name in ("compose.yaml", "app/main.py", "README.md"):
+            text = (root / name).read_text(encoding="utf-8")
+            self.assertNotIn("koalacare-demo-2026", text, name)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
