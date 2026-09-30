@@ -1,7 +1,8 @@
+
 # KoalaCare — the care coordination app
 
 The working product, served at **https://my.koalacare.app**.
-
+(this project has been created & maintained by 'https://github.com/Winged002/term6' )
 KoalaCare is the operating system for looking after someone. The mental model is a
 combination of a family group chat, a medication organiser, a shared calendar, a
 task manager, a document vault and a care handover system — built specifically for
